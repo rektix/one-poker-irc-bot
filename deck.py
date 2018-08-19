@@ -1,6 +1,7 @@
 from random import shuffle
 
 class Card:
+
     def __init__(self,value):
         self.value = value
         if value == 14:
@@ -13,12 +14,14 @@ class Card:
             self.name = 'K'
         else:
             self.name = str(value)
+
         if value < 8:
             self.group = 'down'
         else:
             self.group = 'up'
 
 class Deck:
+
     def __init__(self):
         self.cards = []
         for value in range(2,15):
@@ -28,3 +31,5 @@ class Deck:
 
     def get_card(self):
         return self.cards.pop()
+
+deck = Deck()
