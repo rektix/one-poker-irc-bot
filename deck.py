@@ -16,9 +16,9 @@ class Card:
             self.name = str(value)
 
         if value < 8:
-            self.group = 'down'
+            self.group = 'DOWN'
         else:
-            self.group = 'up'
+            self.group = 'UP'
 
 class Deck:
 
@@ -31,5 +31,3 @@ class Deck:
 
     def get_card(self):
         return self.cards.pop()
-
-deck = Deck()

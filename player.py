@@ -1,5 +1,3 @@
-from deck import deck
-
 class Player:
 
     def __init__(self,nick):
@@ -8,7 +6,7 @@ class Player:
         self.cards = []
         self.current_bet = 0
     
-    def draw_card(self):
+    def draw_card(self,deck):
         self.cards.append(deck.get_card())
 
     def play_card(self,card_number):
