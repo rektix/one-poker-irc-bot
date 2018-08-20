@@ -5,6 +5,7 @@ class Player:
         self.balance = 7
         self.cards = []
         self.current_bet = 0
+        self.checked = False
     
     def draw_card(self,deck):
         self.cards.append(deck.get_card())
@@ -17,12 +18,12 @@ class Player:
             self.balance -= amount
         else:
             amount = self.balance
-            balance = 0
+            self.balance = 0
         self.current_bet += amount
         return amount
     
-    def receive_bet(self,amount):
-        self.balance += amount
+    def receive_bet(self,poll):
+        self.balance += poll 
 
     def place_starting_bet(self):
         return self.place_bet(1)
@@ -31,7 +32,13 @@ class Player:
         return self.place_bet(poll - 2 * self.current_bet)
 
     def raise_bet(self,amount,poll):
-        return self.place_bet(poll - 2 * self.current_bet + amount)
+        return self.place_bet((poll - 2 * self.current_bet) + amount)
     
+    def check(self):
+        self.checked = True
+
+    def uncheck(self):
+        self.checked = False
+
     def end_turn(self):
         self.current_bet = 0
