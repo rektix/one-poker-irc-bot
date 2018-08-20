@@ -1,4 +1,4 @@
-from myirc import *
+from myirc import IRC
 import os
 import random
 from player import Player
@@ -20,6 +20,13 @@ deck = Deck()
 
 irc = IRC()
 irc.connect(server,channel,nickname)
+
+def show_help():
+    irc.send_message(channel, 'List of commands: ".join" - join game, ".quit" - quit game, ".start" - start game, ".cards" - shows cards, ".play" - play card, ".check" - check bet, ".call" - call bet, ".raise" - raise bet, ".fold" - fold, ".help" - show help, ".rules" - show rules.')
+
+def show_rules():
+    irc.send_message(channel, 'One Poker rules - This is a card game from manga "Kaiji". It uses 2 decks of cards. Each of two players gets 2 cards and 7 coins at the beginning of the game. Cards are divided in 2 groups - DOWN (2-7) and UP (8-A). Both players know in which group opponents cards belong.')
+    irc.send_message(channel, 'After both players play their cards, betting stage begins. Players can check, raise, call or fold. When bets are over, winner is chosen. Higher value card wins, except the case where 2 beats A. Winner takes all coins from poll. Player who gets all of the coins wins.')
 
 def join_game(name):
     global started
@@ -52,8 +59,9 @@ def player_quit(name):
             if player.nick == name:                  
                 game_stop()
                 break 
+
 def game_stop():
-    global started
+    global started, players
     players = list()
     irc.send_message(channel, 'Game stopped!')  
     started = False              
@@ -75,6 +83,7 @@ def show_poll():
 def show_balance():
     irc.send_message(channel, '%s has %s coins. %s has %s coins.' % 
                     (player_nicks[0],players[0].balance,player_nicks[1],players[1].balance))
+
 def start_game(name):
     global started, poll, deck
     if started == True:
@@ -151,7 +160,6 @@ def start_betting_round():
     turn_to_bet()
     if players[0].balance == 0 or players[1].balance == 0:
         showdown()
-
 
 def player_check(name):
     global turn, last_action
@@ -289,8 +297,6 @@ def end_game(winner):
     players = list()
     player_nicks = list()
 
-
-
 while 1:
     text = irc.get_text()
     print(text)
@@ -309,36 +315,40 @@ while 1:
         name = text.split('!')[0][1:]
         player_quit(name)
 
-    if 'PRIVMSG' in text and channel in text and "hello" in text:
-        name = text.split('!')[0][1:]
-        irc.send_message(channel, 'hello!'+name)
-
     if 'PRIVMSG' in text and channel in text:
         name = text.split('!')[0][1:]
         message = text.split('PRIVMSG ' + channel + ' :')[-1]
         if message[0] == '.':
             command = message.split(' ')[0]
-            if command == '.join' or command =='.j':
+            if command == '.join':
                 join_game(name)
-            if command == '.quit' or command == '.q':
+            elif command == '.quit':
                 player_quit(name)
-            if command == '.start' or command == '.s':
+            elif command == '.start':
                 start_game(name)
-            if command == '.play' or command == '.p':
+            elif command == '.cards':
+                show_cards(name)
+            elif command == '.play':
                 try:
                     card = int(message.split(' ')[1])
                     play_card(name, card)
                 except:
                     irc.send_message(channel, 'Nothing to play.')                
-            if command =='.check':
+            elif command =='.check':
                 player_check(name)
-            if command == '.call':
+            elif command == '.call':
                 player_call(name)
-            if command == '.raise':
+            elif command == '.raise':
                 try:
                     amount = int(message.split(' ')[1])
                     player_raise(name,amount)                    
                 except:
                     irc.send_message(channel, 'Please enter raise amount.')        
-            if command == '.fold':
+            elif command == '.fold':
                 player_fold(name)
+            elif command == '.help':
+                show_help()
+            elif command == '.rules':
+                show_rules()
+            else:
+                irc.send_message(channel, 'Invalid command, for help type ".help", for rules type ".rules"')
