@@ -204,6 +204,7 @@ def player_raise(name,amount):
             last_action = 'raise'
             turn = 1 if turn == 0 else 0    
             if player.balance == 0:
+                last_action = 'raise all'
                 irc.send_message(channel, name + ' goes all in!!!')
                 player.check()                
             turn_to_bet()
@@ -217,26 +218,27 @@ def player_call(name):
     if betting_started:
         player = players[turn]
         if player.nick == name:
-            if not last_action == 'raise all':
-                if not last_action == 'check':
-                    poll += player.call_bet(poll)
-                    irc.send_message(channel, player.nick + ' calls.')
-                    player.uncheck()
-                    show_balance()
-                    show_poll()
-                    last_action = 'call'
-                    turn = 1 if turn == 0 else 0    
-                    if player.balance == 0:
-                        irc.send_message(channel, name + ' goes all in!!!')
-                        players[0].check()
-                        players[1].check()
-                        showdown()
-                    else:
-                        turn_to_bet()
+            if not last_action == 'check':
+                poll += player.call_bet(poll)
+                irc.send_message(channel, player.nick + ' calls.')
+                player.uncheck()
+                show_balance()
+                show_poll()                
+                turn = 1 if turn == 0 else 0    
+                if player.balance == 0:
+                    irc.send_message(channel, name + ' goes all in!!!')
+                    players[0].check()
+                    players[1].check()                    
+                    showdown()
+                elif last_action == 'raise all':
+                    players[0].check()
+                    players[1].check()                    
+                    showdown()
                 else:
-                    irc.send_message(channel, 'You can check, raise or fold.')
+                    turn_to_bet()
+                last_action = 'call'
             else:
-                irc.send_message(channel, 'You can call or fold.')
+                irc.send_message(channel, 'You can check, raise or fold.')            
         else:
             irc.send_message(channel, 'It\'s not your turn to bet.')
     else:
@@ -286,9 +288,10 @@ def end_round(winner):
             end_game(1)
         elif players[1].balance == 0:
             end_game(0)
+        else: start_round(winner)
     else:
         irc.send_message(channel, 'It\'s a tie!')
-    start_round(winner)
+        start_round(winner)
 
 def end_game(winner):
     global started, players, player_nicks
@@ -327,14 +330,20 @@ while 1:
             elif command == '.start':
                 start_game(name)
             elif command == '.cards':
-                show_cards(name)
+                if started and name in player_nicks:
+                    for player in players:
+                        if player.nick == name:
+                            name = player
+                            break
+                    print(name)
+                    show_cards(name)
             elif command == '.play':
                 try:
                     card = int(message.split(' ')[1])
                     play_card(name, card)
                 except:
                     irc.send_message(channel, 'Nothing to play.')                
-            elif command =='.check':
+            elif command =='.check':                
                 player_check(name)
             elif command == '.call':
                 player_call(name)
@@ -352,3 +361,5 @@ while 1:
                 show_rules()
             else:
                 irc.send_message(channel, 'Invalid command, for help type ".help", for rules type ".rules"')
+
+# fix .cards, when someone calls on all in, proceed to showdown
