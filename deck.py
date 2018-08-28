@@ -1,6 +1,13 @@
 from random import shuffle
 
 class Card:
+    """
+    A class used to represent a card in the game.
+
+    name - display name (2-A)
+    value - strength of a card (2-14)
+    group - DOWN (2-7), UP(8-A)
+    """
 
     def __init__(self,value):
         self.value = value
@@ -21,6 +28,11 @@ class Card:
             self.group = 'UP'
 
 class Deck:
+    """
+    A class used for representing a deck in the game.
+
+    cards - list of cards, this game uses 2 regular decks.
+    """
 
     def __init__(self):
         self.cards = []
@@ -30,4 +42,5 @@ class Deck:
         shuffle(self.cards)
 
     def get_card(self):
+        """Deals card from the top of the deck"""
         return self.cards.pop()

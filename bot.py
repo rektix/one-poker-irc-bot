@@ -1,12 +1,19 @@
+"""
+One Poker IRC bot 
+
+This bot acts as a dealer for the game One Poker. 
+"""
 from myirc import IRC
 import os
 import random
 from player import Player
 from deck import Deck
+import settings
 
-channel = '#onepoker'
-server = 'irc.freenode.net'
-nickname ='rektixBOT'
+#initializing global variables
+channel = settings.channel
+server = settings.server
+nickname = settings.nickname
 player_nicks = []
 players = []
 started = False
@@ -17,18 +24,25 @@ poll = 0
 turn = 0
 last_action = ''
 deck = Deck()
-
 irc = IRC()
-irc.connect(server,channel,nickname)
 
 def show_help():
+    """Shows bot commands as a message to the channel."""
+
     irc.send_message(channel, 'List of commands: ".join" - join game, ".quit" - quit game, ".start" - start game, ".cards" - shows cards, ".play" - play card, ".check" - check bet, ".call" - call bet, ".raise" - raise bet, ".fold" - fold, ".help" - show help, ".rules" - show rules.')
 
 def show_rules():
+    """Shows game rules as a message to the channel."""
+
     irc.send_message(channel, 'One Poker rules - This is a card game from manga "Kaiji". It uses 2 decks of cards. Each of two players gets 2 cards and 7 coins at the beginning of the game. Cards are divided in 2 groups - DOWN (2-7) and UP (8-A). Both players know in which group opponents cards belong.')
     irc.send_message(channel, 'After both players play their cards, betting stage begins. Players can check, raise, call or fold. When bets are over, winner is chosen. Higher value card wins, except the case where 2 beats A. Winner takes all coins from poll. Player who gets all of the coins wins.')
 
 def join_game(name):
+    """Adds user to the game session, displays proper message if that is not possible.
+     
+    name - nickname of a user
+    """
+
     global started
     if not started:
         if name in player_nicks:
@@ -49,6 +63,11 @@ def join_game(name):
     irc.send_message(channel, 'Players in game: ' + players_string[:-2])
 
 def player_quit(name):
+    """Removes player from game session.
+    
+    name - nickname of a user
+    """
+
     global started
     for player in list(player_nicks):
         if player == name:
@@ -61,16 +80,28 @@ def player_quit(name):
                 break 
 
 def game_stop():
+    """Stops the game."""
+
     global started, players
     players = list()
     irc.send_message(channel, 'Game stopped!')  
     started = False              
 
 def show_cards(player):
+    """Sends notice to the player containing their cards.
+    
+    player - player object of selected player
+    """
+
     message = 'Your cards: 0[%s], 1[%s] (number[value]). Type card number to play it, not value.' % (player.cards[0].name, player.cards[1].name)
     irc.send_notice(player.nick, message)
 
 def show_groups(player):
+    """Shows card groups for player's cards.
+    
+    player - player object of selected player
+    """
+
     if player.cards[0].group == 'UP' and player.cards[1].group == 'DOWN':
         message = '%s has %s and %s cards' % (player.nick, player.cards[1].group, player.cards[0].group)
     else:
@@ -78,13 +109,21 @@ def show_groups(player):
     irc.send_message(channel, message)
 
 def show_poll():
+    """Shows coins in reward poll."""
+
     irc.send_message(channel, 'Winning poll: %s coins' % poll)
 
 def show_balance():
+    """Shows balance of both players."""
+
     irc.send_message(channel, '%s has %s coins. %s has %s coins.' % 
                     (player_nicks[0],players[0].balance,player_nicks[1],players[1].balance))
 
 def start_game(name):
+    """Starts game if player that ran command is in game session.
+    
+    name - nickname of a user
+    """
     global started, poll, deck
     if started == True:
         irc.send_message(channel, 'Game already started.')
@@ -104,17 +143,25 @@ def start_game(name):
         irc.send_message(channel, 'You must join a game to start it.')
 
 def turn_to_bet():
+    """Shows whose turn to bet is."""
+
     player = player_nicks[turn]
     irc.send_message(channel, player + '\'s turn to bet.')
 
 def start_round(winner=''):
+    """Starts game round.
+    
+    winner - player who won last game
+        - if its value is 'tie', players won't put starting bet again
+    """
+
     global waiting_for_cards, last_action, poll
     played_cards[0] = None
     played_cards[1] = None
     players[0].uncheck()
     players[1].uncheck() 
-    players[0].current_bet = 0
-    players[1].current_bet = 0
+    players[0].end_turn()
+    players[1].end_turn()
     if not winner == 'tie':
         poll += players[0].place_starting_bet()      
         poll += players[1].place_starting_bet()  
@@ -134,6 +181,12 @@ def start_round(winner=''):
     last_action = ''
 
 def play_card(name,card):
+    """Plays selected card if player is in the game.
+    
+    name - nickname of a user
+    card - index of selected card
+    """
+
     global waiting_for_cards
     if waiting_for_cards and started:
         if name in player_nicks and card in [0,1]:
@@ -145,7 +198,7 @@ def play_card(name,card):
             if played_cards[index] is None:
                 played_cards[index] = player.play_card(card)
                 irc.send_message(channel, player.nick + ' played a card.')
-                if played_cards[0] is not None and played_cards [1] is not None:
+                if played_cards[0] is not None and played_cards[1] is not None:
                     waiting_for_cards = False
                     start_betting_round()
             else:
@@ -158,6 +211,8 @@ def play_card(name,card):
         irc.send_message(channel, 'Not time to play yet!')
 
 def start_betting_round():
+    """Starts betting round"""
+
     global betting_started
     irc.send_message(channel, 'Both cards played, betting starts!')
     betting_started = True
@@ -166,6 +221,11 @@ def start_betting_round():
         showdown()
 
 def player_check(name):
+    """Player checks if all conditions are satisfied, otherwise displays proper message.
+    
+    name - nickname of a user
+    """
+
     global turn, last_action
     if betting_started:
         player = players[turn]
@@ -192,6 +252,12 @@ def player_check(name):
         irc.send_message(channel, 'Betting round hasn\'t started yet.')
 
 def player_raise(name,amount):
+    """Player raises if all conditions are satisfied, otherwise displays proper message.
+    
+    name - nickname of a user
+    amount - raise amount
+    """
+
     global poll, turn, last_action
     if betting_started:
         player = players[turn]
@@ -221,6 +287,11 @@ def player_raise(name,amount):
         irc.send_message(channel, 'Betting round hasn\'t started yet.')
 
 def player_call(name):
+    """Player calls if all conditions are satisfied, otherwise displays proper message.
+    
+    name - nickname of a user
+    """
+
     global poll, turn, last_action
     if betting_started:
         player = players[turn]
@@ -252,6 +323,11 @@ def player_call(name):
         irc.send_message(channel, 'Betting round hasn\'t started yet.')
 
 def player_fold(name):
+    """Player folds if all conditions are satisfied, otherwise displays proper message.
+    
+    name - nickname of a user
+    """
+
     global poll, turn
     if betting_started:
         player = players[turn]
@@ -267,6 +343,8 @@ def player_fold(name):
         irc.send_message(channel, 'Betting round hasn\'t started yet.')
 
 def showdown():
+    """Proceeds round to showdown phase, determines the winner."""
+
     global betting_started
     irc.send_message(channel, 'SHOWDOWN!')
     irc.send_message(channel, '%s played %s' % (player_nicks[0],played_cards[0].name))
@@ -285,6 +363,11 @@ def showdown():
     end_round(winner)
 
 def end_round(winner):
+    """Sends winnings to the winner, starts next round.
+    
+    winner - player object of the winner
+    """
+
     if not winner == 'tie':
         global poll        
         winner.receive_bet(poll)
@@ -300,69 +383,81 @@ def end_round(winner):
         start_round(winner)
 
 def end_game(winner):
+    """Ends game, declares winner.
+    
+    winner - index of winner's nickname
+    """
+
     global started, players, player_nicks
     irc.send_message(channel, player_nicks[winner] + ' won the game!!!')
     started = False
     players = list()
     player_nicks = list()
+    
+def main():
+    """Connects bot to the server, receives commands and responds to them."""
 
-while 1:
-    text = irc.get_text()
-    print(text)
+    irc.connect(server,channel,nickname)
+    while 1:
+        text = irc.get_text()
+        print(text)
 
-    if 'NICK' in text and channel in text:
-        old_nick = text.split('!')[0][1:]
-        new_nick = message = text.split('NICK ' + channel + ' :')[-1]
-        for player in player_nicks:
-            if player == old_nick:
-                player = new_nick
-        for player in players:
-            if player.nick == old_nick:
-                player.nick = new_nick
+        if 'NICK' in text and channel in text:
+            old_nick = text.split('!')[0][1:]
+            new_nick = message = text.split('NICK ' + channel + ' :')[-1]
+            for player in player_nicks:
+                if player == old_nick:
+                    player = new_nick
+            for player in players:
+                if player.nick == old_nick:
+                    player.nick = new_nick
 
-    if (' QUIT ' in text or ' PART ' in text) and not ' PRIVMSG ' in text:
-        name = text.split('!')[0][1:]
-        player_quit(name)
+        if (' QUIT ' in text or ' PART ' in text) and not ' PRIVMSG ' in text:
+            name = text.split('!')[0][1:]
+            player_quit(name)
 
-    if 'PRIVMSG' in text and channel in text:
-        name = text.split('!')[0][1:]
-        message = text.split('PRIVMSG ' + channel + ' :')[-1]
-        if message[0] == '.':
-            command = message.split(' ')[0]
-            if command == '.join':
-                join_game(name)
-            elif command == '.quit':
-                player_quit(name)
-            elif command == '.start':
-                start_game(name)
-            elif command == '.cards':
-                if started and name in player_nicks:
-                    for player in players:
-                        if player.nick == name:
-                            name = player
-                            break                    
-                    show_cards(name)
-            elif command == '.play':
-                try:
-                    card = int(message.split(' ')[1])
-                    play_card(name, card)
-                except:
-                    irc.send_message(channel, 'Nothing to play.')                
-            elif command =='.check':                
-                player_check(name)
-            elif command == '.call':
-                player_call(name)
-            elif command == '.raise':
-                try:
-                    amount = int(message.split(' ')[1])
-                    player_raise(name,amount)                    
-                except:
-                    irc.send_message(channel, 'Please enter raise amount.')        
-            elif command == '.fold':
-                player_fold(name)
-            elif command == '.help':
-                show_help()
-            elif command == '.rules':
-                show_rules()
-            else:
-                irc.send_message(channel, 'Invalid command, for help type ".help", for rules type ".rules"')
+        if 'PRIVMSG' in text and channel in text:
+            name = text.split('!')[0][1:]
+            message = text.split('PRIVMSG ' + channel + ' :')[-1]
+            if message[0] == '.':
+                command = message.split(' ')[0]
+                if command == '.join':
+                    join_game(name)
+                elif command == '.quit':
+                    player_quit(name)
+                elif command == '.start':
+                    start_game(name)
+                elif command == '.cards':
+                    if started and name in player_nicks:
+                        for player in players:
+                            if player.nick == name:
+                                name = player
+                                break                    
+                        show_cards(name)
+                elif command == '.play':
+                    try:
+                        card = int(message.split(' ')[1])
+                        play_card(name, card)
+                    except:
+                        irc.send_message(channel, 'Nothing to play.')                
+                elif command =='.check':                
+                    player_check(name)
+                elif command == '.call':
+                    player_call(name)
+                elif command == '.raise':
+                    try:
+                        amount = int(message.split(' ')[1])
+                        player_raise(name,amount)                    
+                    except:
+                        irc.send_message(channel, 'Please enter raise amount.')        
+                elif command == '.fold':
+                    player_fold(name)
+                elif command == '.help':
+                    show_help()
+                elif command == '.rules':
+                    show_rules()
+                else:
+                    irc.send_message(channel, 'Invalid command, for help type ".help", for rules type ".rules"')
+
+if __name__ == '__main__':
+    main()
